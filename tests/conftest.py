@@ -1,20 +1,16 @@
 # conftest.py
 
-# Standard library imports
+# Imports
 from builtins import range
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from uuid import uuid4
-
-# Third-party imports
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, scoped_session
 from faker import Faker
-
-# Application-specific imports
 from app.main import app
 from app.database import Base, Database
 from app.models.user_model import User, UserRole
@@ -22,32 +18,29 @@ from app.dependencies import get_db, get_settings, get_email_service
 from app.utils.security import hash_password
 from app.utils.template_manager import TemplateManager
 from app.services.email_service import EmailService
-from app.utils.smtp_connection import SMTPClient
 from app.services.jwt_service import create_access_token
+from app.utils.smtp_connection import SMTPClient
 
 fake = Faker()
-
 settings = get_settings()
 TEST_DATABASE_URL = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
 engine = create_async_engine(TEST_DATABASE_URL, echo=settings.debug)
 AsyncTestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 AsyncSessionScoped = scoped_session(AsyncTestingSessionLocal)
 
+# Mock SMTP Client
 @pytest.fixture
-def smtp_client():
-    return SMTPClient(
-        server=settings.smtp_server,
-        port=settings.smtp_port,
-        username=settings.smtp_username,
-        password=settings.smtp_password
-    )
+def mock_smtp_client():
+    with patch.object(SMTPClient, 'send_email', return_value=True) as mock:
+        yield mock
 
 @pytest.fixture
-def email_service(smtp_client):
+def email_service(mock_smtp_client):
     template_manager = TemplateManager()
-    return EmailService(smtp_client=smtp_client, template_manager=template_manager)
+    email_service = EmailService(smtp_client=mock_smtp_client, template_manager=template_manager)
+    return email_service
 
-# this is what creates the http client for your api tests
+# Asynchronous HTTP Client for API Tests
 @pytest.fixture(scope="function")
 async def async_client(db_session, email_service):
     async with AsyncClient(app=app, base_url="http://testserver") as client:
@@ -58,6 +51,7 @@ async def async_client(db_session, email_service):
         finally:
             app.dependency_overrides.clear()
 
+# Initialize Database
 @pytest.fixture(scope="session", autouse=True)
 def initialize_database():
     try:
@@ -65,17 +59,17 @@ def initialize_database():
     except Exception as e:
         pytest.fail(f"Failed to initialize the database: {str(e)}")
 
-# this function setup and tears down (drops tales) for each test function, so you have a clean database for each test.
+# Setup and Teardown Database for Each Test
 @pytest.fixture(scope="function", autouse=True)
 async def setup_database():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
-        # you can comment out this line during development if you are debugging a single test
-         await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
+# Database Session for Each Test
 @pytest.fixture(scope="function")
 async def db_session(setup_database):
     async with AsyncSessionScoped() as session:
@@ -84,6 +78,7 @@ async def db_session(setup_database):
         finally:
             await session.close()
 
+# User Fixtures
 @pytest.fixture(scope="function")
 async def locked_user(db_session):
     unique_email = fake.email()
@@ -204,7 +199,7 @@ async def manager_user(db_session: AsyncSession):
     await db_session.commit()
     return user
 
-# Fixtures for common test data
+# Common Test Data Fixtures
 @pytest.fixture
 def user_base_data():
     return {
@@ -254,7 +249,7 @@ def user_response_data():
 def login_request_data():
     return {"username": "john_doe_123", "password": "SecurePassword123!"}
 
-# Fixtures for authentication tokens
+# Authentication Token Fixtures
 @pytest.fixture
 async def user_token(verified_user):
     return create_access_token(data={"sub": verified_user.email, "role": UserRole.AUTHENTICATED.name})
