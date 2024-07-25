@@ -12,6 +12,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - app-network
 
@@ -22,9 +24,10 @@ services:
       PGADMIN_DEFAULT_PASSWORD: adminpassword
       PGADMIN_LISTEN_PORT: 80
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
-      - "5050:80" # Expose PgAdmin on port 5050 of the host
+      - "5050:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     networks:
@@ -34,6 +37,7 @@ services:
     build: .
     volumes:
       - ./:/myapp/
+      - ./coverage-data:/myapp/.coverage
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,6 +58,7 @@ services:
 volumes:
   postgres-data:
   pgadmin-data:
+  coverage-data:
 
 networks:
   app-network:
