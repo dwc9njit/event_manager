@@ -32,8 +32,12 @@ services:
 
   fastapi:
     build: .
+    environment:
+      COVERAGE_FILE: /myapp/coverage-data/.coverage
     volumes:
       - ./:/myapp/
+      - ./coverage-data:/myapp/coverage-data
+      - ./htmlcov:/myapp/htmlcov
     depends_on:
       postgres:
         condition: service_healthy
