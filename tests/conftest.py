@@ -1,18 +1,4 @@
 # conftest.py
-"""
-File: test_database_operations.py
-
-Overview:
-This Python test file utilizes pytest to manage database states and HTTP clients for testing a web application built with FastAPI and SQLAlchemy. It includes detailed fixtures to mock the testing environment, ensuring each test is run in isolation with a consistent setup.
-
-Fixtures:
-- `async_client`: Manages an asynchronous HTTP client for testing interactions with the FastAPI application.
-- `db_session`: Handles database transactions to ensure a clean database state for each test.
-- User fixtures (`user`, `locked_user`, `verified_user`, etc.): Set up various user states to test different behaviors under diverse conditions.
-- `token`: Generates an authentication token for testing secured endpoints.
-- `initialize_database`: Prepares the database at the session start.
-- `setup_database`: Sets up and tears down the database before and after each test.
-"""
 
 # Standard library imports
 from builtins import range
@@ -32,10 +18,11 @@ from faker import Faker
 from app.main import app
 from app.database import Base, Database
 from app.models.user_model import User, UserRole
-from app.dependencies import get_db, get_settings
+from app.dependencies import get_db, get_settings, get_email_service
 from app.utils.security import hash_password
 from app.utils.template_manager import TemplateManager
 from app.services.email_service import EmailService
+from app.utils.smtp_connection import SMTPClient
 from app.services.jwt_service import create_access_token
 
 fake = Faker()
@@ -46,20 +33,26 @@ engine = create_async_engine(TEST_DATABASE_URL, echo=settings.debug)
 AsyncTestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 AsyncSessionScoped = scoped_session(AsyncTestingSessionLocal)
 
+@pytest.fixture
+def smtp_client():
+    return SMTPClient(
+        server=settings.smtp_server,
+        port=settings.smtp_port,
+        username=settings.smtp_username,
+        password=settings.smtp_password
+    )
 
 @pytest.fixture
-def email_service():
-    # Assuming the TemplateManager does not need any arguments for initialization
+def email_service(smtp_client):
     template_manager = TemplateManager()
-    email_service = EmailService(template_manager=template_manager)
-    return email_service
-
+    return EmailService(smtp_client=smtp_client, template_manager=template_manager)
 
 # this is what creates the http client for your api tests
 @pytest.fixture(scope="function")
-async def async_client(db_session):
+async def async_client(db_session, email_service):
     async with AsyncClient(app=app, base_url="http://testserver") as client:
         app.dependency_overrides[get_db] = lambda: db_session
+        app.dependency_overrides[get_email_service] = lambda: email_service
         try:
             yield client
         finally:
@@ -211,7 +204,6 @@ async def manager_user(db_session: AsyncSession):
     await db_session.commit()
     return user
 
-
 # Fixtures for common test data
 @pytest.fixture
 def user_base_data():
@@ -232,7 +224,6 @@ def user_base_data_invalid():
         "bio": "I am a software engineer with over 5 years of experience.",
         "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg"
     }
-
 
 @pytest.fixture
 def user_create_data(user_base_data):

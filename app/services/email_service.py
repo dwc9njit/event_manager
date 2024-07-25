@@ -1,4 +1,3 @@
-# email_service.py
 from builtins import ValueError, dict, str
 from settings.config import settings
 from app.utils.smtp_connection import SMTPClient
@@ -6,13 +5,8 @@ from app.utils.template_manager import TemplateManager
 from app.models.user_model import User
 
 class EmailService:
-    def __init__(self, template_manager: TemplateManager):
-        self.smtp_client = SMTPClient(
-            server=settings.smtp_server,
-            port=settings.smtp_port,
-            username=settings.smtp_username,
-            password=settings.smtp_password
-        )
+    def __init__(self, smtp_client: SMTPClient, template_manager: TemplateManager):
+        self.smtp_client = smtp_client
         self.template_manager = template_manager
 
     async def send_user_email(self, user_data: dict, email_type: str):
