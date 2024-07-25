@@ -3,8 +3,7 @@
 # Imports
 from builtins import range
 from datetime import datetime
-from unittest.mock import patch, MagicMock
-from uuid import uuid4
+from unittest.mock import patch, AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
@@ -153,11 +152,12 @@ async def unverified_user(db_session):
 async def users_with_same_role_50_users(db_session):
     users = []
     for _ in range(50):
+        unique_nickname = fake.unique.user_name()  # Ensure unique nickname
         user_data = {
-            "nickname": fake.user_name(),
+            "nickname": unique_nickname,
             "first_name": fake.first_name(),
             "last_name": fake.last_name(),
-            "email": fake.email(),
+            "email": fake.unique.email(),
             "hashed_password": fake.password(),
             "role": UserRole.AUTHENTICATED,
             "email_verified": False,
@@ -168,6 +168,7 @@ async def users_with_same_role_50_users(db_session):
         users.append(user)
     await db_session.commit()
     return users
+
 
 @pytest.fixture
 async def admin_user(db_session: AsyncSession):

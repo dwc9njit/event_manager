@@ -1,4 +1,5 @@
 # main.py
+import logging
 from builtins import Exception
 from fastapi import FastAPI
 from starlette.responses import JSONResponse
@@ -6,6 +7,9 @@ from app.database import Database
 from app.dependencies import get_settings
 from app.routers import user_routes
 from app.utils.api_description import getDescription
+
+logging.basicConfig(level=logging.DEBUG)
+
 app = FastAPI(
     title="User Management",
     description=getDescription(),
