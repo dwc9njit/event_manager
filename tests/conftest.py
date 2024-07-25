@@ -1,3 +1,4 @@
+# conftest.py
 """
 File: test_database_operations.py
 
@@ -187,7 +188,7 @@ async def admin_user(db_session: AsyncSession):
         email="admin@example.com",
         first_name="John",
         last_name="Doe",
-        hashed_password="securepassword",
+        hashed_password=hash_password("securepassword"),
         role=UserRole.ADMIN,
         is_locked=False,
     )
@@ -202,7 +203,7 @@ async def manager_user(db_session: AsyncSession):
         first_name="John",
         last_name="Doe",
         email="manager_user@example.com",
-        hashed_password="securepassword",
+        hashed_password=hash_password("securepassword"),
         role=UserRole.MANAGER,
         is_locked=False,
     )
@@ -261,3 +262,16 @@ def user_response_data():
 @pytest.fixture
 def login_request_data():
     return {"username": "john_doe_123", "password": "SecurePassword123!"}
+
+# Fixtures for authentication tokens
+@pytest.fixture
+async def user_token(verified_user):
+    return create_access_token(data={"sub": verified_user.email, "role": UserRole.AUTHENTICATED.name})
+
+@pytest.fixture
+async def admin_token(admin_user):
+    return create_access_token(data={"sub": admin_user.email, "role": UserRole.ADMIN.name})
+
+@pytest.fixture
+async def manager_token(manager_user):
+    return create_access_token(data={"sub": manager_user.email, "role": UserRole.MANAGER.name})

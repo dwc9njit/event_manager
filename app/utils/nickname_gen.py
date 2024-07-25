@@ -1,3 +1,4 @@
+# nickname_generation.py
 from builtins import str
 import random
 

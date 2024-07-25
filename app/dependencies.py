@@ -1,3 +1,4 @@
+# dependencies.py
 from builtins import Exception, dict, str
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer

@@ -1,3 +1,4 @@
+# template_manager.py
 import markdown2
 from pathlib import Path
 

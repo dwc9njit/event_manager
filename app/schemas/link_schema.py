@@ -1,3 +1,4 @@
+# link_schema.py
 from pydantic import BaseModel, Field, HttpUrl
 
 class Link(BaseModel):

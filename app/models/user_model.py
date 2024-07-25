@@ -1,3 +1,4 @@
+# user_model.py
 from builtins import bool, int, str
 from datetime import datetime
 from enum import Enum
